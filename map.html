@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<meta http-equiv="Access-Control-Allow-Origin" content="*">
+<title>CREATIVE ASSET INVENTORY</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="jquery/jquery-1.6.4.min.js"></script>
+
+
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+   integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+   crossorigin=""/>
+ <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+   integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+   crossorigin=""></script>
+ <script src="randomColor.min.js"></script>
+ <script src="spin-js/spin.js"></script>
+ <script src="spin-js/jquery.spin.js"></script>
+ <script src="http://maps.stamen.com/js/tile.stamen.js"></script>
+<script src="MQ-geocode/mq-map.js"></script>
+ <script src="MQ-geocode/mq-geocoding.js"></script>
+  <!-- Tabletop to access Google spreadsheets - THANK YOU AMAZING HUMANS WHO CREATED THIS!! LOVE LOVE LOVE-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.1/tabletop.js"></script>
+  <script src="leaflet-markercluster/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="leaflet-markercluster/dist/MarkerCluster.css">
+	    <link rel="stylesheet" href="leaflet-markercluster/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="leaflet-sidebar/L.Control.Sidebar.css" />
+    <script src="leaflet-sidebar/L.Control.Sidebar.js"></script>
+	<script src="button/leaflet-button.js"></script>
+  
+ <!-- FontAaaawwwwesome -->  
+  <script src="https://use.fontawesome.com/0a9a58d8dc.js"></script>  
+ <script src='https://api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.0.1/leaflet-omnivore.min.js'></script>
+ 
+   <!-- Load Esri Leaflet from CDN -->
+    <script src="https://unpkg.com/esri-leaflet@2.0.8"></script>
+ 
+ <!-- Esri Leaflet Geocoder -->
+    <link rel="stylesheet" href="https://unpkg.com/esri-leaflet-geocoder@2.2.6/dist/esri-leaflet-geocoder.css">
+    <script src="https://unpkg.com/esri-leaflet-geocoder@2.2.6"></script>
+
+ <!-- FUSE - thanks, Kiro -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.0.4/fuse.min.js"></script>
+	
+<link rel="stylesheet" href="css/cai.css" />
+
+
+
+<style>
+		.assetsearch {
+			background-color:#fff;
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+			padding:2px;
+		}
+		
+</style>
+
+</head>				
+	
+<body>
+
+<div id="iconBar"><img src="sf-logo.png" width="90px" style="float:left"><img src="ct-logo.png" height="90px" style="float:left; padding-right:20px;"></div>
+<div name="titlebar" >
+	<div id="header">
+		<h1 style="color:#fff;">CREATIVE ASSETS INVENTORY</h1>
+	</div>
+</div>
+<div class="topnav" id="topMenu">
+  <a href="survey.html">Add an Asset!</a>
+  <a href="connect.html">Get Involved</a>
+  <a href="directory.html">Directory</a>
+  <a href="map.html">Map</a>
+    <a href="index.html">About</a>
+  <a href="javascript:void(0);" style="font-size:15px;" class="icon" onclick="loadMenu()"><i class='fa fa-bars fa-lg'></i></a>
+</div>
+
+<div id="spinBox" class='spinner'></div>
+<div id="directoryBox" style="width:100%; height:250px; display:none;"></div>
+<div id="mapdiv" style="width: 100%; height: 500px;"></div>
+<div id="mapkey" style="width:100%"></div>
+
+<script type="text/javascript">
+
+function loadMenu() {
+    var x = document.getElementById("topMenu");
+    if (x.className === "topnav") {
+        x.className += " responsive";
+    } else {
+        x.className = "topnav";
+    }
+}
+
+// General note: TABLETOP, I love you. LOVE YOU.
+
+
+var map = L.map('mapdiv',{
+  fullscreenControl: true,
+  fullscreenControlOptions: {
+    position: 'topleft'
+  }
+} ).setView([40.526388, -75.060482], 15);
+
+var searchControl = L.esri.Geocoding.geosearch().addTo(map);
+
+
+
+    // create an empty layer group to store the results and add it to the map
+    var results = L.layerGroup().addTo(map);
+
+    // listen for the results event and add every result to the map
+    searchControl.on("results", function(data) {
+        results.clearLayers();
+        for (var i = data.results.length - 1; i >= 0; i--) {
+            results.addLayer(L.marker(data.results[i].latlng));
+        }
+    });
+
+  var info_sidebar = document.createElement('div');
+  info_sidebar.id = "infoSidebar";
+  info_sidebar.class = "sidebar";
+  $('body')[0].appendChild(info_sidebar);
+  
+  infoSidebar = new L.control.sidebar('infoSidebar',{
+      position: 'right'
+  });
+	map.addControl(infoSidebar);
+
+
+var stamen = L.tileLayer('http://a.tile.stamen.com/watercolor/{z}/{x}/{y}.png', {attribution: 'uses a <a href="http://stamen.com">stamen</a> basemap'});
+var stamenstreets = L.tileLayer('http://a.tile.stamen.com/toner-lite/{z}/{x}/{y}.png', {attribution: 'uses a <a href="http://stamen.com">stamen</a> basemap'});
+
+
+googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+	maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3'],
+	attribution: 'uses google satellite'
+});
+
+googleStr = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
+	maxZoom: 20,
+    subdomains:['mt0','mt1','mt2','mt3'],
+	attribution: 'uses google streets'
+});
+
+var stamenLabels = L.tileLayer('http://a.tile.stamen.com/toner-labels/{z}/{x}/{y}.png', {attribution: 'uses <a href="http://stamen.com">stamen</a> labels'});
+
+var waterStreet = new L.layerGroup();
+waterStreet.addLayer(stamen)
+waterStreet.addLayer(stamenLabels);
+
+var satLabel = new L.layerGroup();
+makeSatLabels(satLabel);
+
+function makeSatLabels(e) {
+	e._layers[36] = googleSat;
+	satLabel.addLayer(stamenLabels);
+}
+waterStreet.addTo(map);
+
+var assetSearch = L.control({position: 'bottomleft'});
+var assetSearchContent = "<b>Search</b> " + "<input type='text' id='assetquery'><button type='button' onclick='getSearchedAssets()'><i class='fa fa-search' style='color:#f69729;'></i></button>";
+
+var div = L.DomUtil.create('div', 'assetsearch');
+			assetSearch.onAdd = function (map) {
+				assetSearch.update();
+				return div;
+			}
+			
+			assetSearch.update = function() {
+				div.innerHTML = assetSearchContent;
+			}
+assetSearch.addTo(map);
+
+function getSearchedAssets() {
+	var querystring = $('#assetquery').val();
+	len = querystring.length;
+	console.log(querystring);
+	var options = {
+		shouldSort: true,
+		threshold: 0.2,
+		location: 0,
+		distance: 50,
+		maxPatternLength: 32,
+		minMatchCharLength: len,
+		keys: [
+			"a_name",
+			"a_type",
+			"a_town",
+			"pub_add",
+			"c_occ",
+			"a_desc"
+		]
+	};
+	var fuse = new Fuse(allAssets, options); 
+	var output = fuse.search(querystring);
+	console.log(output.length);
+	displayQuery(output);
+}
+
+
+var muniURL = encodeURI("https://creativeassetinventory.carto.com/api/v2/sql?format=GeoJSON&q=SELECT * FROM munis where county = 'HUNTERDON'");
+<!-- var parcelURL = encodeURI("https://creativeassetinventory.carto.com/api/v2/sql?format=GeoJSON&q=SELECT * FROM parcels where city like '%STOCKTON%' or city like '%FRENCHTOWN%' or city like '%HOLLAND%' or city like '%KINGWOOD%' or city like '%LAMBERTVILLE%' or city like '%CLINTON%' "); 
+-->
+
+var assetURL = encodeURI("https://creativeassetinventory.carto.com/api/v2/sql?format=GeoJSON&q=SELECT * FROM cai_public");
+<!-- console.log(parcelURL); -->
+
+var bases = { "Watercolor": waterStreet, "BW Streets": stamenstreets, "Streets": googleStr, "Satellite": satLabel};
+
+overlayLayers = {}; 
+		<!-- don't forget to add any new layers to the menu! -->		
+assetOverlay={};
+muniLayer = new L.geoJson();
+
+$.getJSON(muniURL,
+            function(data) {
+			
+	        muniLayer = L.geoJson(data, {
+				style: style,
+				interactive: false,
+				onEachFeature: function (feature, layer) {
+
+				}
+				
+			});
+				overlayLayers["Towns"] = muniLayer;
+				//muniLayer.addTo(map);
+				
+				
+			});
+
+		
+			function style(feature) {
+			var randColor = randomColor({hue: 'yellow'});						
+			return {
+					weight: 6,
+					opacity: .3,
+					color:'#f69729',
+					fillOpacity: 0.1,
+					fillColor: randColor,
+				};
+			}
+
+
+
+loadAssets();
+var infoSidebarOn = false;
+var layerControlOn = false;
+				
+
+
+function getAssetColor(d) {
+  switch (d) {
+    case 'Space or Facility (includes vacant spaces)':
+      return '#4CAF50';
+	case 'Creative Places -- Cultural Facilities, Natural/Urban Spaces, Potential Resources':
+	        return '#4CAF50';
+    case 'Cultural Industries and Businesses':
+      return '#03A9F4';
+    case 'Supporting Resources':
+      return '#FFC107';
+    case 'Business':
+      return '#03A9F4';
+    case 'Creative People -- Cultural Professionals and Artists':
+      return '#F44336';
+    case 'Cultural Institutions, Nonprofits, and Educational Organizations':
+      return '#FF5722';
+	case 'Community Cultural Associations':
+		return '#795548';
+    case 'Cultural Events and Festivals':
+      return '#673AB7';
+    default:
+      return '#FFEDA0';
+  }
+  }
+
+function cleanLink(lk) {
+	var httpsFind = lk.search('https://');
+	cleaned = '';
+	if (httpsFind == -1) {
+		var httpFind = lk.search('http://');
+		if (httpFind == -1) {
+			var instaHandle = lk.search('@');
+			if (instaHandle != -1) {
+				cleaned = 'http://www.instagram.com/' + lk.substr(0, lk.length-1);
+			}
+			else {
+				cleaned = 'http://' + lk.trim();
+			}
+		}
+		else cleaned = lk;
+	}
+	else cleaned = lk;
+	return cleaned;
+}
+
+function displayThisAsset(a) {
+			var info = a.target.options.data;
+			atype = info.a_type;	
+
+			var linkCleaned = '';
+
+				if (info.website != '') {
+					linkCleaned = cleanLink(info.website);
+				}
+				var websiteCompile = '';
+				
+				if ((linkCleaned != '')) {
+					websiteCompile = 	"<a style='line-height:1.5em;margin-bottom:3px;' href='"+ linkCleaned +"'>" + info.website + "</a><br>";
+				}
+				else {websiteCompile = '';}
+				
+				var locationCompile;
+				
+				if (info.pub_add != '') {
+					locationCompile = 
+						"<b>" +
+						info.pub_add + 
+						"</b>" + 
+						"</br>";						;
+					}
+				else {
+					locationCompile = 
+						"<b>" +
+						info.town +
+						"</b>" + 
+						"</br>";
+					}
+
+			var titleSetup = 
+			"<b>" + "<i style='padding-right:5px; color:" + getAssetColor(atype) + ";' class='fa fa-circle'></i>" + info.a_type + "</b>" +
+			"<hr>" +
+			"<h3 style='margin-bottom:-10px;margin-top:0px;'>"+ info.a_name + "</h3>" +
+						 "<br>" +
+						"<div style='margin-top:-10px;'>" +
+						locationCompile +
+				websiteCompile +
+						"</div>" +
+						 "<hr>";					
+				
+				var picSetup = '';
+				
+				if ((info.photolink != null) && (info.photolink != '') && (info.photolink != undefined)) {
+					picSetup = 
+						"<div class='imgcontainer' style='width:90%;float:none;padding-top:0;'>" + 
+						"<img class = 'assetPic' style='float:none;width:100%;padding:5px;' src='" + info.photolink + "'>" +
+						"</div>";
+				}
+				
+			
+
+				var all = 	
+				titleSetup +
+				picSetup +				
+				"<div class='assetDesc'>" +
+				info.a_desc + "<br><br>" +
+				"</div>" ;
+				
+			
+			
+			
+			var infoDisplay = 
+			 "<i class='fa fa-times fa-lg' style='float:right' onClick='infoSidebar.toggle();infoSidebarOn=false;' ></i>" +
+			 all ;
+			
+			
+				
+				infoSidebar.setContent(infoDisplay);
+				if (infoSidebarOn == false) {
+					infoSidebar.show();
+					infoSidebarOn = true;
+				}
+	
+
+}
+  
+var points = [];
+var infoDisplay ='bibble';
+var initLoad = 0;
+var hasQueryLayer = false;
+var queryLayer = new L.markerClusterGroup({});
+
+
+function displayQuery(data){
+	queryLayer = new L.markerClusterGroup({});
+	if (hasQueryLayer = true) {
+		queryLayer.removeFrom(map);
+		hasQueryLayer = false;
+	}
+	for (i=0;i<=data.length-1;i++) {
+		if ((data[i].subdate != '') && (data[i].Lat !='#N/A') && (data[i].Lat !='#REF!')) {
+			var lat = data[i].Lat;
+			var lng = data[i].Lng;
+			var latlng = [lat,lng];
+			var atype = data[i].a_type;
+			assetMarker = L.CircleMarker.extend({
+				options:{
+					data: []
+				}
+			});
+			if ((latlng != null)&&(lat != 'Loading...') && (lat != '#N/A')) {
+			var marker = new assetMarker(latlng, {
+				radius: 10,
+				weight:4,
+				color:"#000",
+				opacity:.7,
+				fillOpacity: 0.7,
+				fillColor:getAssetColor(atype),
+				data: data[i]
+				});
+			queryLayer.addLayer(marker);
+			marker.bringToFront();
+			
+			var content = 
+					"<b>"+ data[i].a_name + "</b>";
+			
+
+			marker.bindTooltip(content,{'maxWidth':'300px'});
+
+			marker.on("click", function(e) {
+				L.DomEvent.stop(e);
+				displayThisAsset(e);			
+			})
+			queryLayer.addTo(map);
+			map.fitBounds(queryLayer.getBounds());
+			if (map.hasLayer(stamen)){
+				stamen.redraw();
+			}
+			if (map.hasLayer(googleSat)){
+				googleSat.redraw();
+			}
+			if (map.hasLayer(stamenstreets)){
+				stamenstreets.redraw();
+			}
+			queryLayer.bringToFront();
+			hasQueryLayer = true;
+			}
+		}
+ }
+}
+
+function displayAssets(data) {
+	if (initLoad == 0) {
+		allAssets = data;
+		initLoad = 1;
+	}
+	
+	var assets = new L.markerClusterGroup({disableClusteringAtZoom:16});
+	for (i=0;i<=data.length-1;i++) {
+		if ((data[i].subdate != '') && (data[i].Lat !='#N/A') && (data[i].Lat !='#REF!')) {
+			var lat = data[i].Lat;
+			var lng = data[i].Lng;
+			var latlng = [lat,lng];
+			var atype = data[i].a_type;
+			assetMarker = L.CircleMarker.extend({
+				options:{
+					data: []
+				}
+			});
+			if ((latlng != null)&&(lat != 'Loading...') && (lat != '#N/A')) {
+			var marker = new assetMarker(latlng, {
+				radius: 10,
+				weight:2,
+				color:"#fff",
+				opacity:.7,
+				fillOpacity: 0.7,
+				fillColor:getAssetColor(atype),
+				data: data[i]
+				});
+			assets.addLayer(marker);
+			
+			var content = 
+					"<b>"+ data[i].a_name + "</b>";
+			
+
+			assets.on('clusterclick', function (a) {
+				a.layer.spiderify;
+			});
+			marker.bindTooltip(content,{'maxWidth':'300px'});
+			if (map.hasLayer(stamen)){
+				stamen.redraw();
+			}
+			if (map.hasLayer(googleSat)){
+				googleSat.redraw();
+			}
+			if (map.hasLayer(stamenstreets)){
+				stamenstreets.redraw();
+			}
+			marker.on("click", function(e) {
+				L.DomEvent.stop(e);
+				displayThisAsset(e);			
+			})
+			assets.addTo(map);
+			}
+		}
+	var key = "<div class='key'>"+
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle-o' style='color:#900C3F'></i>" + 
+				" Cluster (click/zoom!)" +
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#F44336'></i>" + 
+				" People" +
+				"</div>" + 
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#4CAF50'></i>" + 
+				" Places" +
+				"</div>" + 
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#03A9F4'></i>" + 
+				" Businesses" +
+				"</div>" + 
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#FF5722'></i>" + 
+				" Institutions" +
+				"</div>" + 
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#795548'></i>" + 
+				" Associations" +
+				"</div>" + 
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#673AB7'></i>" + 
+				" Events" +
+				"</div>" + 				
+				"<div class= 'keyitem'>" + 
+				"<i class='fa fa-circle' style='color:#FFC107'></i>" + 
+				" Supporting" +
+				"</div>" + 
+				"</div>";
+				
+				
+	overlayLayers["Assets"] = assets;
+	}
+if (layerControlOn = false){
+	L.control.layers(bases, overlayLayers, {position:'topleft'}).addTo(map);	
+	layerControlOn = true;
+}
+document.getElementById('mapkey').innerHTML = key;
+//L.control.layers('',assetOverlay, {position:'bottomleft',collapsed:false}).addTo(map);
+	
+map.fitBounds(assets.getBounds());
+}
+
+
+		
+function loadAssets() {
+
+Tabletop.init({
+    	key: "https://docs.google.com/spreadsheets/d/1l9w9WBksn5WEyKkZIHnnal19YjJ9Y_JN2NmxH7az-20/edit?usp=sharing",
+    	callback: displayAssets,
+    	simpleSheet: true,
+    	debug: false
+    });
+	
+			
+			
+map.on('click', function (e) {
+	lat = e.latlng.lat;
+	lng = e.latlng.lng;
+	
+	var popup = new L.popup({maxWidth:'140'}).setLatLng(e.latlng);
+	addStripped='';
+
+	var esriGeo = L.esri.Geocoding.reverseGeocode().latlng([lat, lng]).run(function(error, result, response){
+	var codeAddress = '';
+		if (result.address.Addr_type == 'POI') {
+			codeAddress = result.address.LongLabel;
+		}
+		
+		else {
+			codeAddress = result.address.Match_addr;
+		}
+		jotLink='https://form.jotform.us/72586059140155?fullAddress='+codeAddress+'&Lat='+lat+'&Lng='+lng;
+
+ 		function setPopup() {
+			
+				popupContent = "<b>" + codeAddress + "</b><hr>" +
+					"<h1><a style='text-decoration:none' target='blank' href='"+ jotLink + "'>ADD AN ASSET!</a></h1>" ;
+				}			
+				setPopup();
+			popup.setContent(popupContent);
+			popup.openOn(map);
+			});
+			
+		});
+}
+
+			
+
+	
+</script> 
+  
+
+</body>
+</html>
